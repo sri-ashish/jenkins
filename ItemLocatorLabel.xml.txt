@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+              <!DOCTYPE labels SYSTEM "label.dtd">
+                <labels _FORMAT="ItemLocator 2d 2x4.btw" _QUANTITY="1" >
+                  <label _PRINTERNAME="\\hpprintserver\Zebra Printer - 11th FL Conf Room">
+                    <variable name= "ITEM">12345678</variable>
+                    <variable name= "ITEMID"></variable>
+                    <variable name= "LEGACY"></variable>
+                    <variable name= "SUBINVENTORY">1789012</variable>
+                    <variable name= "SerialNumber"></variable>
+                    <!--<variable name= "LOCATION">345678</variable>-->
+                    <variable name= "UOM"></variable>
+                    <variable name= "ITEMDESC">Test Item</variable>
+                    <variable name= "PoNum"></variable>
+                    <variable name= "EmpName"></variable>
+                    <variable name= "UserName">Ashish</variable>
+                  </label>
+                  <label _PRINTERNAME="\\hpprintserver\Zebra Printer - 11th FL Conf Room">
+                    <!-- <variable name= "ITEM">12345678</variable> -->
+                    <variable name= "ITEMID"></variable>
+                    <variable name= "LEGACY"></variable>
+                    <variable name= "SUBINVENTORY">1789012</variable>
+                    <variable name= "SerialNumber"></variable>
+                    <variable name= "LOCATION">345678</variable>
+                    <variable name= "UOM"></variable>
+                    <!--<variable name= "ITEMDESC">Test Item</variable>-->
+                    <variable name= "PoNum"></variable>
+                    <variable name= "EmpName"></variable>
+                    <variable name= "UserName">Ashish</variable>
+                  </label>
+                </labels>
