@@ -1,0 +1,314 @@
+<?xml version = '1.0' encoding = 'UTF-8'?>   
+<!-- =============================================================================        --> 
+<!--                  H & P                                                               --> 
+<!--   ===========================================================================        --> 
+<!--   ===========================================================================        -->
+<!--   Author           :       Swathi Rao                                                --> 
+<!--   File Name        :       XXHP_INV_VAL_DT                                           --> 
+<!--   Description      :       HP All Inventories Value Report (XML)                     --> 
+<!--   Usage            :                                                                 --> 
+<!--   Modification History:                                                              --> 
+<!--   ====================                                                               --> 
+<!--   Version     Date          Author           Remarks                                 --> 
+<!--   =======   ===========    =============    =================================        --> 
+<!--   1.0        21-JAN-2016   Swathi Rao       Initial draft version.                   --> 
+<!--                                             This report is a copy of All Inventories -->
+<!--                                             Value Report with additional columns     -->  
+<!--   ===========================================================================        -->
+
+<dataTemplate name="XXHP_INV_VAL" defaultPackage="XXHP_BOM_CSTRAIVR_XMLP_PKG" version="1.0">
+   <properties>
+      <property name="xml_tag_case" value="upper"/>
+   </properties>
+   <parameters>
+      <!-- <parameter name="P_CONC_REQUEST_ID" dataType="character" defaultValue="0"></parameter> -->
+      <parameter name="P_ORG_ID" dataType="number"/>
+      <parameter name="P_CURRENCY_CODE" dataType="character"/>
+      <!-- <parameter name="P_EXCHANGE_RATE" dataType="number" defaultValue="1"></parameter> -->
+      <parameter name="P_SORT_OPTION" dataType="number" defaultValue="1"/>
+      <parameter name="P_ITEM_FROM" dataType="character"/>
+      <parameter name="P_ITEM_TO" dataType="character"/>
+      <parameter name="P_CATEGORY_SET" dataType="number" defaultValue="3"/>
+      <parameter name="P_CAT_NUM" dataType="number" defaultValue="101"/>
+      <parameter name="P_CAT_FROM" dataType="character"/>
+      <parameter name="P_CAT_TO" dataType="character"/>
+      <parameter name="P_NEG_QTY" dataType="number" defaultValue="2"/>
+      <parameter name="P_ZERO_COST" dataType="number" defaultValue="2"/>
+      <!--parameter name="P_ORGANIZATION" dataType="character"/-->
+      <!--parameter name="ROUND_UNIT" dataType="number" defaultValue="1"/-->
+      <!--parameter name="P_ITEM_SEG" dataType="character" defaultValue="MSI.description||MSI.description||MSI.description||MSI.segment1||MSI.segment2||MSI.segment3"/-->
+      <!--parameter name="P_CAT_SEG" dataType="character" defaultValue="MC.attribute1||MC.attribute2||MC.attribute3||MC.attribute4||MC.attribute5||MC.description||MC.segment1"/-->
+      <parameter name="P_ITEM_WHERE" dataType="character" defaultValue="1 = 1"/>
+      <parameter name="P_CAT_WHERE" dataType="character" defaultValue="1 = 1"/>
+      <!--parameter name="P_SORT_BY" dataType="character"/-->
+      <!--parameter name="P_CAT_SET_NAME" dataType="character"/-->
+      <parameter name="P_GL_NUM" dataType="number" defaultValue="101"/>
+      <parameter name="P_DETAIL_LEVEL" dataType="character"/>
+      <parameter name="P_COST_TYPE_ID" dataType="number" defaultValue="1"/>
+      <!--parameter name="P_DEF_COST_TYPE" dataType="number" defaultValue="1"/-->
+      <!--parameter name="P_COST_TYPE" dataType="character"/-->
+      <parameter name="P_TRACE" dataType="character" defaultValue="N"/>
+      <!--parameter name="P_EXT_PREC" dataType="number" defaultValue="5"/-->
+      <parameter name="P_QTY_WHERE" dataType="character"/>
+      <parameter name="P_EXP_ITEM" dataType="number" defaultValue="2"/>
+      <parameter name="P_QTY_PRECISION" dataType="number" defaultValue="3"/>
+      <!-- <parameter name="P_CURRENCY_DSP" dataType="character"></parameter> -->
+      <parameter name="P_VIEW_COST" dataType="number" defaultValue="1"/>
+      <parameter name="P_EXP_SUBINV" dataType="number" defaultValue="2"/>
+      <parameter name="P_RPT_MODE" dataType="number" defaultValue="1"/>
+      <!--parameter name="P_COST_ORG_ID" dataType="number"/-->
+      <parameter name="P_EXCHANGE_RATE_CHAR" dataType="character"/>
+      <parameter name="P_AS_OF_DATE" dataType="character"></parameter>
+      <parameter name="P_TITLE" dataType="character"/>
+   </parameters>
+   <lexicals>
+      <lexical name="CATEGORY_SEGMENT" type="oracle.apps.fnd.flex.kff.select" application_short_name="INV" id_flex_code="MCAT" id_flex_num=":P_CAT_NUM" segments="ALL" code_combination_table_alias="MC" multiple_id_flex_num="N" show_parent_segments="Y" output_type="VALUE"/>
+      <lexical name="CATEGORY_PSEG" type="oracle.apps.fnd.flex.kff.select" application_short_name="INV" id_flex_code="MCAT" id_flex_num=":P_CAT_NUM" segments="ALL" code_combination_table_alias="MC" multiple_id_flex_num="N" show_parent_segments="Y" output_type="PADDED_VALUE"/>
+      <lexical name="ITEM_SEGMENT" type="oracle.apps.fnd.flex.kff.select" application_short_name="INV" id_flex_code="MSTK" id_flex_num="" segments="ALL" code_combination_table_alias="MSI" multiple_id_flex_num="Y" show_parent_segments="Y" output_type="VALUE"/>
+      <lexical name="ITEM_PSEG" type="oracle.apps.fnd.flex.kff.select" application_short_name="INV" id_flex_code="MSTK" id_flex_num="" segments="ALL" code_combination_table_alias="MSI" multiple_id_flex_num="Y" show_parent_segments="Y" output_type="PADDED_VALUE"/>
+   </lexicals>
+   <dataQuery>
+      <sqlStatement name="Q_MAIN">
+         <![CDATA[SELECT &ITEM_SEGMENT ITEM_NUMBER,
+       &CATEGORY_SEGMENT CATEGORY,
+       decode(:P_SORT_OPTION,1,&ITEM_SEGMENT,&CATEGORY_SEGMENT),
+       MSI.description DESCRIPTION,
+       mp.organization_code,
+       MSI.primary_uom_code UOM_CODE,
+       CIQT.subinventory_code,
+       milk.concatenated_segments,
+       ROUND(SUM(CIQT.rollback_qty),:P_Qty_Precision) STK_QTY,
+       0 INT_QTY,
+       0 RCV_QTY,
+       ROUND(
+         SUM(CIQT.rollback_qty) *
+         DECODE(SUB.asset_inventory,1,CICT.item_cost,0) *
+         :P_Exchange_Rate /
+         :Round_Unit
+       ) *
+       :Round_Unit STK_VALUE,
+       0 INT_VALUE,
+       0 RCV_VALUE,
+       ROUND(
+         SUM(CIQT.rollback_qty) *
+         DECODE(SUB.asset_inventory,1,CICT.item_cost,0) *
+         :P_Exchange_Rate /
+         :Round_Unit
+       ) *
+       :Round_Unit IT_VALUE,
+       ROUND(SUM(CIQT.rollback_qty),:P_Qty_Precision) IT_QTY
+FROM   cst_inv_qty_temp CIQT,
+       cst_inv_cost_temp CICT,
+       mtl_parameters MP,
+       mtl_system_items_vl MSI,
+       mtl_categories MC,
+       mtl_secondary_inventories SUB,
+       mtl_item_locations_kfv milk
+WHERE  CIQT.qty_source in (3,4,5)
+AND    CICT.cost_source in (1,2)
+AND    CICT.organization_id = CIQT.organization_id
+AND    CICT.inventory_item_id = CIQT.inventory_item_id
+AND    milk.organization_id = CIQT.organization_id
+AND    milk.inventory_item_id = CIQT.inventory_item_id
+AND    milk.subinventory_code = CIQT.subinventory_code
+AND    (   MP.primary_cost_method = 1 
+       OR  CICT.cost_group_id = CIQT.cost_group_id) 
+AND    MP.organization_id = CIQT.organization_id
+AND    SUB.organization_id = CIQT.organization_id
+AND    SUB.secondary_inventory_name = CIQT.subinventory_code
+AND    MSI.organization_id = CIQT.organization_id
+AND    MSI.inventory_item_id = CIQT.inventory_item_id
+AND    MC.category_id  = CIQT.category_id
+GROUP
+BY     &ITEM_SEGMENT,
+       &CATEGORY_SEGMENT,
+       MSI.description,
+       mp.organization_code,
+       MSI.primary_uom_code,
+       CIQT.subinventory_code,
+       milk.concatenated_segments,
+       DECODE(SUB.asset_inventory,1,CICT.item_cost,0)
+HAVING SUM(CIQT.rollback_qty)  <> 0
+UNION ALL
+SELECT &ITEM_SEGMENT ITEM_NUMBER,
+       &CATEGORY_SEGMENT CATEGORY,
+       decode(:P_SORT_OPTION,1,&ITEM_SEGMENT,&CATEGORY_SEGMENT),
+       MSI.description DESCRIPTION,
+       mp.organization_code,
+       MSI.primary_uom_code UOM_CODE,
+       CIQT.subinventory_code,
+       milk.concatenated_segments,
+       0 STK_QTY,
+       ROUND(SUM(CIQT.rollback_qty),:P_Qty_Precision) INT_QTY,
+       0 RCV_QTY,
+       0 STK_VALUE,
+       ROUND(
+         SUM(CIQT.rollback_qty) *
+         CICT.item_cost *
+         :P_Exchange_Rate /
+         :Round_Unit
+       ) *
+       :Round_Unit INT_VALUE,
+       0 RCV_VALUE,   
+       ROUND(
+         SUM(CIQT.rollback_qty) *
+         CICT.item_cost *
+         :P_Exchange_Rate /
+         :Round_Unit
+       ) *
+       :Round_Unit IT_VALUE,
+       ROUND(SUM(CIQT.rollback_qty),:P_Qty_Precision) IT_QTY
+FROM   cst_inv_qty_temp CIQT,
+       cst_inv_cost_temp CICT,
+       mtl_parameters MP,
+       mtl_system_items_vl MSI,
+       mtl_categories MC,
+       mtl_item_locations_kfv milk
+WHERE  CIQT.qty_source in (6,7,8)
+AND    CICT.organization_id = NVL(:P_ORG_ID,CICT.organization_id)
+AND    CICT.cost_source in (1,2)
+AND    CICT.organization_id = CIQT.organization_id
+AND    CICT.inventory_item_id = CIQT.inventory_item_id
+AND    milk.organization_id = CIQT.organization_id
+AND    milk.inventory_item_id = CIQT.inventory_item_id
+AND    milk.subinventory_code = CIQT.subinventory_code
+AND    (   MP.primary_cost_method = 1 
+       OR  CICT.cost_group_id = CIQT.cost_group_id) 
+AND    MP.organization_id = CIQT.organization_id
+AND    MSI.organization_id = CIQT.organization_id
+AND    MSI.inventory_item_id = CIQT.inventory_item_id
+AND    MC.category_id  = CIQT.category_id
+GROUP
+BY     &ITEM_SEGMENT,
+       &CATEGORY_SEGMENT,
+       MSI.description,
+       mp.organization_code,
+       MSI.primary_uom_code,
+       CIQT.subinventory_code,
+       milk.concatenated_segments,
+       CICT.item_cost
+HAVING SUM(CIQT.rollback_qty) <> 0
+UNION ALL
+SELECT &ITEM_SEGMENT ITEM_NUMBER,
+       &CATEGORY_SEGMENT CATEGORY,
+       decode(:P_SORT_OPTION,1,&ITEM_SEGMENT,&CATEGORY_SEGMENT),
+       MSI.description DESCRIPTION,
+       mp.organization_code,
+       MSI.primary_uom_code UOM_CODE,
+       CIQT.subinventory_code,
+       milk.concatenated_segments,
+       0 STK_QTY,
+       0 INT_QTY,
+       ROUND(SUM(CIQT.rollback_qty),:P_Qty_Precision) RCV_QTY,
+       0 STK_VALUE,
+       0 INT_VALUE,
+       ROUND(
+         SUM(CIQT.rollback_qty)*
+         CICT.item_cost * 
+         :P_Exchange_Rate /
+         :Round_Unit
+       ) *
+       :Round_Unit RCV_VALUE, 
+       ROUND(
+         SUM(CIQT.rollback_qty)*
+         CICT.item_cost * 
+         :P_Exchange_Rate /
+         :Round_Unit
+       ) *
+       :Round_Unit IT_VALUE,
+       ROUND(SUM(CIQT.rollback_qty),:P_Qty_Precision) IT_QTY
+FROM    cst_inv_qty_temp CIQT,
+        cst_inv_cost_temp CICT,
+        mtl_system_items_vl MSI,
+        mtl_categories MC,
+        mtl_parameters mp,
+        mtl_item_locations_kfv milk
+WHERE   CIQT.qty_source in (9,10)
+AND     CICT.cost_source in (3,4)
+AND     CICT.organization_id = CIQT.organization_id
+AND     mp.organization_id = CICT.organization_id
+AND     CICT.inventory_item_id = CIQT.inventory_item_id
+AND     milk.organization_id = CIQT.organization_id
+AND     milk.inventory_item_id = CIQT.inventory_item_id
+AND     milk.subinventory_code = CIQT.subinventory_code
+AND     CICT.rcv_transaction_id = CIQT.rcv_transaction_id
+AND     MSI.organization_id = CIQT.organization_id
+AND     MSI.inventory_item_id = CIQT.inventory_item_id
+AND     MC.category_id  = CIQT.category_id
+GROUP
+BY     &ITEM_SEGMENT,
+       &CATEGORY_SEGMENT,
+       MSI.description,
+       mp.organization_code,
+       MSI.primary_uom_code,
+       CIQT.subinventory_code,
+       milk.concatenated_segments,
+       CICT.item_cost
+HAVING SUM(CIQT.rollback_qty) <> 0
+order by 5,3,1
+]]>
+      </sqlStatement>
+   </dataQuery>
+   <dataTrigger name="beforeReportTrigger" source="XXHP_BOM_CSTRAIVR_XMLP_PKG.beforereport"/>
+   <dataStructure>
+      <element name="P_CAT_SET_NAME" dataType="varchar2" value="XXHP_BOM_CSTRAIVR_XMLP_PKG.P_CAT_SET_NAME"/>
+      <element name="P_ORGANIZATION" dataType="varchar2" value="XXHP_BOM_CSTRAIVR_XMLP_PKG.P_ORGANIZATION"/>
+      <element name="P_COST_TYPE" dataType="varchar2" value="XXHP_BOM_CSTRAIVR_XMLP_PKG.P_COST_TYPE"/>
+      <element name="P_SORT_BY" dataType="varchar2" value="XXHP_BOM_CSTRAIVR_XMLP_PKG.P_SORT_BY"/>
+      <element name="P_AS_OF_DATE1" dataType="varchar2" value="XXHP_BOM_CSTRAIVR_XMLP_PKG.P_AS_OF_DATE1"/>
+      <element name="P_CURRENCY_DSP" dataType="varchar2" value="XXHP_BOM_CSTRAIVR_XMLP_PKG.P_CURRENCY_DSP"/>
+      <element name="P_EXCHANGE_RATE" dataType="number" value="XXHP_BOM_CSTRAIVR_XMLP_PKG.P_EXCHANGE_RATE"/>
+      <element name="P_CONC_REQUEST_ID" dataType="varchar2" value="XXHP_BOM_CSTRAIVR_XMLP_PKG.P_CONC_REQUEST_ID"/>
+      <group name="G_CAT" dataType="varchar2" source="Q_MAIN">
+         <element name="CATEGORY_SEGMENT" dataType="varchar2" value="CATEGORY"/>
+         <element name="CAT_STK_VALUE" function="sum" dataType="number" value="G_MAIN.STK_VALUE"/>
+         <element name="CAT_INT_VALUE" function="sum" dataType="number" value="G_MAIN.INT_VALUE"/>
+     <element name="CAT_TOTAL_VALUE" function="sum" dataType="number" value="G_MAIN.IT_VALUE"/>
+         <element name="CAT_RCV_VALUE" function="sum" dataType="number" value="G_MAIN.RCV_VALUE"/>
+         <element name="CAT_STK_VALUE_DSP" function="CURRENCY_FORMAT" dataType="varchar2" value="CAT_STK_VALUE" currencyCode="P_CURRENCY_CODE" width="19"/>
+         <element name="CAT_INT_VALUE_DSP" function="CURRENCY_FORMAT" dataType="varchar2" value="CAT_INT_VALUE" currencyCode="P_CURRENCY_CODE" width="19"/>
+         <element name="CAT_RCV_VALUE_DSP" function="CURRENCY_FORMAT" dataType="varchar2" value="CAT_RCV_VALUE" currencyCode="P_CURRENCY_CODE" width="19"/>
+         <element name="CAT_TOTAL_VALUE_DSP" function="CURRENCY_FORMAT" dataType="varchar2" value="CAT_TOTAL_VALUE" currencyCode="P_CURRENCY_CODE" width="19"/>
+         <group name="G_ITEM" dataType="varchar2" source="Q_MAIN">
+            <element name="ITEM_SEGMENT" dataType="varchar2" value="ITEM_NUMBER"/>
+            <element name="DESCRIPTION" dataType="varchar2" value="DESCRIPTION"/>
+            <element name="ORGANIZATION_CODE" dataType="varchar2" value="ORGANIZATION_CODE"/>
+            <element name="UOM_CODE" dataType="varchar2" value="UOM_CODE"/>
+            <element name="SUBINVENTORY_CODE" dataType="varchar2" value="SUBINVENTORY_CODE"/>
+            <element name="LOCATOR" dataType="varchar2" value="CONCATENATED_SEGMENTS"/>
+            <element name="STK_QUANTITY" function="sum" dataType="number" value="G_MAIN.STK_QTY"/>
+            <element name="INT_QUANTITY" function="sum" dataType="number" value="G_MAIN.INT_QTY"/>
+            <element name="RCV_QUANTITY" function="sum" dataType="number" value="G_MAIN.RCV_QTY"/>
+            <element name="ITEM_STK_VALUE" function="sum" dataType="number" value="G_MAIN.STK_VALUE"/>
+            <element name="ITEM_INT_VALUE" function="sum" dataType="number" value="G_MAIN.INT_VALUE"/>
+            <element name="ITEM_RCV_VALUE" function="sum" dataType="number" value="G_MAIN.RCV_VALUE"/>
+            <element name="ITEM_STK_VALUE_DSP" function="CURRENCY_FORMAT" dataType="varchar2" value="ITEM_STK_VALUE" currencyCode="P_CURRENCY_CODE" width="19"/>
+            <element name="ITEM_RCV_VALUE_DSP" function="CURRENCY_FORMAT" dataType="varchar2" value="ITEM_RCV_VALUE" currencyCode="P_CURRENCY_CODE" width="19"/>
+            <element name="ITEM_INT_VALUE_DSP" function="CURRENCY_FORMAT" dataType="varchar2" value="ITEM_INT_VALUE" currencyCode="P_CURRENCY_CODE" width="19"/>
+            <element name="ITEM_TOTAL_VALUE" function="sum" dataType="number" value="G_MAIN.IT_VALUE"/>
+            <element name="ITEM_TOTAL_QUANTITY" function="sum" dataType="number" value="G_MAIN.IT_QTY"/>
+            <element name="ITEM_TOTAL_VALUE_DSP" function="CURRENCY_FORMAT" dataType="varchar2" value="ITEM_TOTAL_VALUE" currencyCode="P_CURRENCY_CODE" width="19"/>
+            <group name="G_MAIN" dataType="varchar2" source="Q_MAIN">
+               <element name="STK_QTY" dataType="number" value="STK_QTY"/>
+               <element name="INT_QTY" dataType="number" value="INT_QTY"/>
+               <element name="RCV_QTY" dataType="number" value="RCV_QTY"/>
+               <element name="STK_VALUE" dataType="number" value="STK_VALUE"/>
+               <element name="INT_VALUE" dataType="number" value="INT_VALUE"/>
+               <element name="RCV_VALUE" dataType="number" value="RCV_VALUE"/>
+               <element name="IT_VALUE" dataType="number" value="IT_VALUE"/>
+               <element name="IT_QTY" dataType="number" value="IT_QTY"/>
+            </group>
+         </group>
+      </group>
+      <element name="REP_INT_VALUE_DSP" function="CURRENCY_FORMAT" dataType="varchar2" value="REP_INT_VALUE" currencyCode="P_CURRENCY_CODE" width="19"/>
+      <element name="REP_STK_VALUE_DSP" function="CURRENCY_FORMAT" dataType="varchar2" value="REP_STK_VALUE" currencyCode="P_CURRENCY_CODE" width="19"/>
+      <element name="REP_TOTAL_VALUE" function="sum" dataType="number" value="G_MAIN.IT_VALUE"/>
+      <element name="REP_STK_VALUE" function="sum" dataType="number" value="G_MAIN.STK_VALUE"/>
+      <element name="REP_TOTAL_VALUE_DSP" function="CURRENCY_FORMAT" dataType="varchar2" value="REP_TOTAL_VALUE" currencyCode="P_CURRENCY_CODE" width="19"/>
+      <element name="REP_RCV_VALUE" function="sum" dataType="number" value="G_MAIN.RCV_VALUE"/>
+      <element name="REP_RCV_VALUE_DSP" function="CURRENCY_FORMAT" dataType="varchar2" value="REP_RCV_VALUE" currencyCode="P_CURRENCY_CODE" width="19"/>
+      <element name="REP_INT_VALUE" function="sum" dataType="number" value="G_MAIN.INT_VALUE"/>
+      <element name="C_DUMMY" function="count" dataType="number" value="G_ITEM.ITEM_SEGMENT"/>
+   </dataStructure>
+   <dataTrigger name="afterReportTrigger" source="XXHP_BOM_CSTRAIVR_XMLP_PKG.afterreport()"/>
+</dataTemplate>
